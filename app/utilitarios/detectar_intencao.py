@@ -156,3 +156,8 @@ def detectar_intencao_basica(texto: str) -> str:
         return "faq"
 
     return ""
+
+    return ""
+
+# Alias para manter compatibilidade com nome antigo
+detectar_intencao_mensagem = detectar_intencao_basica
