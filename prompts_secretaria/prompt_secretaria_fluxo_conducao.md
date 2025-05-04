@@ -1,0 +1,1 @@
+Esse é o fluxo de condução de um novo paciente baseado em intenções.
