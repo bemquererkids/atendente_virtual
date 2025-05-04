@@ -1,44 +1,45 @@
-from flask import Flask
-from config import Configuracoes
-from app.modelos.base import banco
-from flask_migrate import Migrate
-from app.modelos import especialidade
+from flask import Blueprint, request, jsonify
+from app.utilitarios.extrair_nome import extrair_nome
+from app.utilitarios.detectar_intencao import detectar_intencao_mensagem
+from app.config.identidade_clinica import carregar_identidade_clinica
+from app.agentes.agente_virtual import gerar_resposta
 
-# Importações de rotas
-from app.rotas.whatsapp import whatsapp
+whatsapp = Blueprint("whatsapp", __name__)
 
-# Inicializa o Flask-Migrate
-migrate = Migrate()
+@whatsapp.route("/webhook", methods=["POST"])
+def receber_mensagem():
+    try:
+        dados = request.get_json()
+        mensagem = dados.get("mensagem")
+        telefone = dados.get("telefone")
+        clinic_id = dados.get("clinic_id", "bemquerer")  # fallback padrão
 
-def criar_aplicacao():
-    app = Flask(__name__)
-    app.config.from_object(Configuracoes)
+        if not mensagem or not telefone:
+            return jsonify({"erro": "mensagem e telefone são obrigatórios"}), 400
 
-    banco.init_app(app)
-    migrate.init_app(app, banco)   # ✅ Integra o banco ao Migrate
+        # Carrega identidade da clínica
+        identidade = carregar_identidade_clinica(clinic_id)
 
-    app.register_blueprint(whatsapp)
+        # Detecta intenção e extrai nome
+        nome_detectado = extrair_nome_paciente(mensagem)
+        intencao = detectar_intencao_mensagem(mensagem)
 
-    @app.route("/")
-    def verificar_status():
-        return "✅ Atendente Virtual no ar!"
+        # Gera resposta usando o agente virtual
+        resposta = gerar_resposta(
+            mensagem_usuario=mensagem,
+            identidade_clinica=identidade,
+            telefone_usuario=telefone,
+            nome_detectado=nome_detectado,
+            intencao=intencao,
+            clinic_id=clinic_id
+        )
 
-    return app
+        return jsonify({
+            "resposta": resposta,
+            "intencao": intencao,
+            "nome_detectado": nome_detectado,
+            "clinica_id": clinic_id
+        })
 
-
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from config import Configuracoes
-
-banco = SQLAlchemy()
-migrate = Migrate()
-
-def criar_aplicacao():
-    app = Flask(__name__)
-    app.config.from_object(Configuracoes)
-
-    banco.init_app(app)
-    migrate.init_app(app, banco)
-
-    return app
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500

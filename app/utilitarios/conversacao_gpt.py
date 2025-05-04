@@ -5,7 +5,8 @@ from app.modelos.base import banco, Contexto, HistoricoConversa
 from app.utilitarios.extrair_nome import extrair_nome
 from app.tools.intencao_router import gerar_resposta_por_intencao
 from app.utilitarios.detectar_intencao import detectar_intencao_basica
-from app.config.identidade_secretaria import config_clinica
+from app.config.identidade_clinica import carregar_identidade_clinica
+from app.utilitarios.configuracoes_clinica import mapear_telefone_para_clinica_id
 from app.agentes.agente_virtual import criar_agente_virtual
 from langchain.schema import HumanMessage, AIMessage
 
@@ -33,6 +34,11 @@ def interpretar_variaveis_ocultas(texto: str, contexto):
 def responder_paciente(telefone: str, mensagem_usuario: str) -> str:
     agora = datetime.now()
 
+    # 🔁 IDENTIDADE DA CLÍNICA BASEADA NO TELEFONE
+    clinic_id = mapear_telefone_para_clinica_id(telefone)
+    config_clinica = carregar_identidade_clinica(clinic_id)
+
+    # Busca ou cria o contexto
     contexto = Contexto.query.filter_by(telefone_usuario=telefone).first()
     if not contexto:
         contexto = Contexto(
@@ -58,7 +64,7 @@ def responder_paciente(telefone: str, mensagem_usuario: str) -> str:
     if contexto.etapa == "saudacao":
         contexto.etapa = "coletar_nome"
         banco.session.commit()
-        resposta = "Olá! 🌻 Sou Clara, secretária da Bem-Querer Odontologia. Com quem eu tenho o prazer de falar?"
+        resposta = config_clinica["secretaria_ia"]["apresentacao"]
 
     elif contexto.etapa == "coletar_nome":
         contexto.nome = extrair_nome(mensagem_usuario)
