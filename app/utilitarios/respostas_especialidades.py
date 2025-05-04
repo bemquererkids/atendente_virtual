@@ -1,10 +1,10 @@
 # app/utilitarios/respostas_especialidades.py
 
-from app.utilitarios.configuracoes_clinica import carregar_config
+from app.utilitarios.configuracoes_clinica import carregar_configuracoes_clinica
 
-def responder_especialidade(pergunta: str) -> str:
+def responder_especialidade(pergunta: str, clinic_id: str = "bemquerer") -> str:
     pergunta = pergunta.lower()
-    dados = carregar_config()
+    dados = carregar_configuracoes_clinica(clinic_id)
     especialidades = dados.get("especialidades", {})
 
     for chave, conteudo in especialidades.items():

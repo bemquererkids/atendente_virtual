@@ -3,10 +3,9 @@
 from datetime import datetime
 from app.modelos.base import banco, Contexto, HistoricoConversa
 from app.utilitarios.extrair_nome import extrair_nome
+from app.utilitarios.respostas_especialidades import responder_especialidade
 from app.tools.intencao_router import gerar_resposta_por_intencao
 from app.utilitarios.detectar_intencao import detectar_intencao_basica
-from app.config.identidade_clinica import carregar_identidade_clinica
-from app.utilitarios.configuracoes_clinica import mapear_telefone_para_clinica_id
 from app.agentes.agente_virtual import criar_agente_virtual
 from langchain.schema import HumanMessage, AIMessage
 
@@ -31,14 +30,10 @@ def interpretar_variaveis_ocultas(texto: str, contexto):
 
     return intencao
 
-def responder_paciente(telefone: str, mensagem_usuario: str) -> str:
+def responder_paciente(telefone: str, mensagem_usuario: str, config: dict) -> str:
     agora = datetime.now()
+    clinic_id = config.get("clinica_id", "bemquerer")  # garante fallback
 
-    # 🔁 IDENTIDADE DA CLÍNICA BASEADA NO TELEFONE
-    clinic_id = mapear_telefone_para_clinica_id(telefone)
-    config_clinica = carregar_identidade_clinica(clinic_id)
-
-    # Busca ou cria o contexto
     contexto = Contexto.query.filter_by(telefone_usuario=telefone).first()
     if not contexto:
         contexto = Contexto(
@@ -64,7 +59,7 @@ def responder_paciente(telefone: str, mensagem_usuario: str) -> str:
     if contexto.etapa == "saudacao":
         contexto.etapa = "coletar_nome"
         banco.session.commit()
-        resposta = config_clinica["secretaria_ia"]["apresentacao"]
+        resposta = config.get("mensagem_abertura", f"Olá! Sou Clara, secretária da {config.get('nome_clinica', 'clínica')}. Com quem eu tenho o prazer de falar?")
 
     elif contexto.etapa == "coletar_nome":
         contexto.nome = extrair_nome(mensagem_usuario)
@@ -95,12 +90,17 @@ def responder_paciente(telefone: str, mensagem_usuario: str) -> str:
 
     elif contexto.etapa == "investigar_queixa":
         contexto.motivo = mensagem_usuario.strip()
-        resposta = gerar_resposta_por_intencao(intencao_detectada, mensagem_usuario, contexto.nome or "Paciente")
+
+        if intencao_detectada == "especialidade":
+            resposta = responder_especialidade(mensagem_usuario, clinic_id=clinic_id)
+        else:
+            resposta = gerar_resposta_por_intencao(intencao_detectada, mensagem_usuario, contexto.nome or "Paciente")
+
         contexto.etapa = "agendamento"
         banco.session.commit()
 
     elif contexto.etapa == "agendamento":
-        especialistas = config_clinica.get("agenda_disponivel", {}).get("odontopediatria", {})
+        especialistas = config.get("agenda_disponivel", {}).get("odontopediatria", {})
         if especialistas:
             linhas = [f"{nome}: {', '.join(dias)}" for nome, dias in especialistas.items()]
             resposta = (
@@ -128,7 +128,7 @@ def responder_paciente(telefone: str, mensagem_usuario: str) -> str:
             })
         except Exception as e:
             print(f"[ERRO] ao usar agente LangChain: {e}")
-            resposta = "Estou aqui para te acolher! Se puder repetir ou me explicar melhor, ficarei feliz em continuar. 🌻"
+            resposta = config.get("mensagem_padrao_falha", "Estou aqui para te acolher! Se puder repetir ou me explicar melhor, fico feliz em continuar.")
 
     try:
         historico = HistoricoConversa(
