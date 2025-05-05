@@ -1,0 +1,108 @@
+.
+├── README_Secretaria_Virtual.pdf
+├── README_Secretaria_Virtual_Ilustrado.pdf
+├── ajustar_clinica.py
+├── alembic.ini
+├── app
+│   ├── agentes
+│   │   └── agente_virtual.py
+│   ├── config
+│   │   ├── __init__.py
+│   │   ├── config.py
+│   │   ├── identidade_clinica.py
+│   │   ├── identidade_secretaria.py
+│   │   └── whatsapp_por_clinica.py
+│   ├── crud
+│   ├── esquemas
+│   ├── memoria
+│   │   └── historico_redis.py
+│   ├── modelos
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── clinica.py
+│   │   ├── contexto.py
+│   │   ├── especialidade.py
+│   │   ├── faq.py
+│   │   ├── historico.py
+│   │   ├── lead.py
+│   │   └── profissional.py
+│   ├── principal.py
+│   ├── rotas
+│   │   └── whatsapp.py
+│   ├── servicos
+│   ├── testes
+│   │   └── verificar_identidade.py
+│   ├── tools
+│   │   ├── __init__.py
+│   │   ├── especialidade_tool.py
+│   │   ├── faq_tool.py
+│   │   ├── gpt_tool.py
+│   │   ├── lead_tool.py
+│   │   ├── profissionais_tool.py
+│   │   ├── prompt_loader.py
+│   │   └── prompt_secretaria_intencao_router.py
+│   └── utilitarios
+│       ├── __init__.py
+│       ├── abordagem_inicial.py
+│       ├── chatgpt.py
+│       ├── configuracoes_clinica.py
+│       ├── contexto_clinica.py
+│       ├── detectar_intencao.py
+│       ├── extrair_nome.py
+│       ├── gerar_config_json_gsheets.py
+│       ├── respostas_especialidades.py
+│       └── twilio.py
+├── atualizar_clinic_id.py
+├── atualizar_clinic_id_json.py
+├── config.py
+├── configs
+│   ├── bemquerer.json
+│   └── clinic_id.json
+├── credenciais_google.json
+├── estrutura_projeto.txt
+├── executar.py
+├── gerar_todos_jsons.py
+├── leia_me.md
+├── migracoes
+│   ├── README
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions
+│       ├── 3821d8101e7c_cria_tabela_clinic_config.py
+│       ├── a8faeaae60cc_merge_das_múltiplas_heads.py
+│       ├── ddbe10b4dc0f_atualiza_estrutura_de_leads_com_clinic_.py
+│       ├── f39d1180893a_tabela_limpa_com_clinica_id_string.py
+│       └── renomear_id_para_id_contexto.py
+├── migrations
+│   ├── README
+│   ├── alembic.ini
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions
+│       └── 554b95f84148_criar_tabela_historico_conversa.py
+├── painel_admin
+├── popular_especialidades.py
+├── prompts_secretaria
+│   ├── README.md
+│   ├── changelog_prompts_secretaria.md
+│   ├── intencao_respostas_secretaria.json
+│   ├── prompt_agendamento_especial.md
+│   ├── prompt_clareamento.md
+│   ├── prompt_endodontia.md
+│   ├── prompt_implante.md
+│   ├── prompt_invisalign.md
+│   ├── prompt_lentes.md
+│   ├── prompt_odontopediatria.md
+│   ├── prompt_ortodontia.md
+│   ├── prompt_protese.md
+│   ├── prompt_secretaria_fluxo_conducao.md
+│   └── prompt_secretaria_identidade.md
+├── remocoes.txt
+├── requirements.txt
+├── requirements.txt.save
+├── requisitos.txt
+├── salvar_json_config.py
+├── teste_identidade.py
+└── verificar_identidade.py
+
+20 directories, 86 files
