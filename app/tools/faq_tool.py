@@ -1,8 +1,6 @@
-# app/tools/faq_tool.py
-
 from langchain.tools import tool
 from app.modelos.base import banco
-from app.modelos.faq import FAQ
+from app.modelos.faq import PerguntaFrequente  # ✅ Correção aqui
 
 # Tool exposta para o agente LangChain — exige {"input": "..."} como argumento
 @tool

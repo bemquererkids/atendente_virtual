@@ -3,12 +3,12 @@
 from sqlalchemy import Column, Integer, String, Text
 from app.modelos.base import banco
 
-class FAQ(banco.Model):
+class PerguntaFrequente(banco.Model):
     __tablename__ = "perguntas_frequentes"
     __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True)
-    clinica_id = Column(String, nullable=False)  # Ex: "bemquerer"
+    clinica_id = Column(String, nullable=False)
     pergunta = Column(String(255), nullable=False)
     resposta = Column(Text, nullable=False)
 
