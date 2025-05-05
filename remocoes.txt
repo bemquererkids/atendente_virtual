@@ -1,2 +1,0 @@
-# Remove chave OpenAI
-sk-ssk
