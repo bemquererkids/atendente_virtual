@@ -2,7 +2,7 @@
 
 from langchain.tools import tool
 from app.modelos.base import banco
-from app.modelos.faq import PerguntaFrequente
+from app.modelos.faq import FAQ
 
 # Tool exposta para o agente LangChain — exige {"input": "..."} como argumento
 @tool

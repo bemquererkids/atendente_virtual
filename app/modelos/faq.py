@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Integer, String, Text
 from app.modelos.base import banco
 
-class PerguntaFrequente(banco.Model):
+class FAQ(banco.Model):
     __tablename__ = "perguntas_frequentes"
     __table_args__ = {'extend_existing': True}
 
