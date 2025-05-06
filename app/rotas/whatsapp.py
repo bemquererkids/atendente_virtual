@@ -49,28 +49,30 @@ def webhook_whatsapp():
     if not telefone or not mensagem or not numero_destino:
         return "Requisição inválida", 400
 
-    # 🏷️ Identifica a clínica e carrega contexto/identidade
     clinic_id = identificar_clinica_por_numero(numero_destino)
     carregar_identidade_clinica(clinic_id)
+    carregar_configuracoes_clinica(clinic_id)
 
-    # 🔍 Verifica se a mensagem é um JSON estruturado
     try:
         input_data = json.loads(mensagem)
         entrada_estruturada = isinstance(input_data, dict) and "clinica_id" in input_data
     except json.JSONDecodeError:
         entrada_estruturada = False
+        input_data = None
 
-    # 💬 Usa a mensagem como dict se for estruturada, ou texto puro
-    mensagem_para_agente = input_data if entrada_estruturada else mensagem
+    if entrada_estruturada:
+        mensagem_para_agente = input_data
+    else:
+        mensagem_para_agente = f"[clinica_id: {clinic_id}]\n{mensagem}"
+
+    payload = {
+        "input": mensagem_para_agente,
+        "clinica_id": clinic_id
+    }
+
+    print(f"[DEBUG] Enviando para o agente: {payload}")
 
     try:
-        payload = {
-            "input": mensagem_para_agente,
-            "clinica_id": clinic_id
-        }
-
-        print(f"[DEBUG] Enviando para o agente: {payload}")
-
         resposta = agente_com_memoria.invoke(
             payload,
             config={"configurable": {"session_id": telefone}}
