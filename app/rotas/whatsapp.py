@@ -1,16 +1,18 @@
-# ✅ whatsapp.py atualizado para usar agente_memoria
+# 📁 app/rotas/whatsapp.py
 
 from flask import Blueprint, request
 from app.utilitarios.extrair_nome import extrair_nome
 from app.config.identidade_clinica import carregar_identidade_clinica
 from app.utilitarios.configuracoes_clinica import carregar_configuracoes_clinica
-from app.agentes.agente_memoria import agente_com_memoria  # Novo nome correto
+from app.agentes.agente_memoria import agente_com_memoria  # ✅ Importa o agente correto com memória
 from twilio.rest import Client
 import os
 import json
 
+# 🟦 Blueprint do WhatsApp para registrar rotas relacionadas
 whatsapp = Blueprint("whatsapp", __name__)
 
+# 🔎 Identifica a clínica com base no número do WhatsApp de destino (ex: para multiclinica)
 def identificar_clinica_por_numero(numero_destino):
     numero_destino_limpo = (
         numero_destino.replace("whatsapp:", "")
@@ -37,8 +39,9 @@ def identificar_clinica_por_numero(numero_destino):
                 if numero_config_limpo and numero_config_limpo in numero_destino_limpo:
                     return dados.get("clinica_id")
 
-    return "bemquerer"  # fallback padrao
+    return "bemquerer"  # 🔁 fallback para uma clínica padrão
 
+# 📩 Rota principal que lida com mensagens recebidas via WhatsApp
 @whatsapp.route("/webhook", methods=["POST"])
 def webhook_whatsapp():
     telefone = request.form.get("From")
@@ -48,10 +51,14 @@ def webhook_whatsapp():
     if not telefone or not mensagem or not numero_destino:
         return "Requisição inválida", 400
 
+    # 🏥 Identifica a clínica com base no número do destinatário
     clinic_id = identificar_clinica_por_numero(numero_destino)
-    carregar_identidade_clinica(clinic_id)
 
-    # 🔍 Detecta se a mensagem é um JSON estruturado
+    # 🔧 Carrega configurações e identidade da clínica
+    carregar_identidade_clinica(clinic_id)
+    carregar_configuracoes_clinica(clinic_id)
+
+    # ✅ Verifica se a mensagem é um JSON com campos estruturados
     try:
         input_data = json.loads(mensagem)
         if isinstance(input_data, dict) and "clinica_id" in input_data and "especialidade" in input_data:
@@ -61,13 +68,14 @@ def webhook_whatsapp():
     except json.JSONDecodeError:
         entrada_estruturada = False
 
-    # 📦 Formata a mensagem com contexto de clínica
+    # 🧠 Prepara a entrada a ser enviada para o agente (com ou sem contexto embutido)
     if entrada_estruturada:
         mensagem_para_agente = json.dumps(input_data)
     else:
         mensagem_para_agente = f"[clinica_id: {clinic_id}]\n{mensagem}"
 
     try:
+        # 🤖 Envia para o agente com memória
         resposta = agente_com_memoria.invoke(
             {"input": mensagem_para_agente},
             config={"configurable": {"session_id": telefone}}
@@ -75,6 +83,7 @@ def webhook_whatsapp():
 
         print(f"[INFO] Resposta gerada: {resposta}")
 
+        # 📤 Envia a resposta de volta via Twilio
         client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
         client.messages.create(
             body=resposta if isinstance(resposta, str) else str(resposta),
