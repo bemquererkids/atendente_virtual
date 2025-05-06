@@ -1,5 +1,3 @@
-# app/rotas/whatsapp.py
-
 from flask import Blueprint, request
 from app.utilitarios.extrair_nome import extrair_nome
 from app.config.identidade_clinica import carregar_identidade_clinica
@@ -38,7 +36,7 @@ def identificar_clinica_por_numero(numero_destino):
                 if numero_config_limpo and numero_config_limpo in numero_destino_limpo:
                     return dados.get("clinica_id")
 
-    return "bemquerer"
+    return "bemquerer"  # fallback padrão
 
 @whatsapp.route("/webhook", methods=["POST"])
 def webhook_whatsapp():
@@ -49,21 +47,19 @@ def webhook_whatsapp():
     if not telefone or not mensagem or not numero_destino:
         return "Requisição inválida", 400
 
-    # Identifica a clínica com base no número Twilio
     clinic_id = identificar_clinica_por_numero(numero_destino)
-
-    # ⚙️ Carrega identidade da clínica (não obrigatório ainda, mas já previsto)
     carregar_identidade_clinica(clinic_id)
     nome_detectado = extrair_nome(mensagem)
 
-    # 🤖 Gera a resposta com agente com memória (LangChain)
+    # Inclui o contexto de clínica no início da mensagem
+    mensagem_com_contexto = f"[clinica_id: {clinic_id}]\n{mensagem}"
+
     resposta = agente_com_memoria.invoke(
-        {"mensagem": mensagem},
+        {"input": mensagem_com_contexto},
         config={"configurable": {"session_id": telefone}}
     )
     print(f"[TESTE LOCAL] Resposta gerada: {resposta.content}")
 
-    # Envia a resposta usando Twilio
     try:
         client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
         client.messages.create(

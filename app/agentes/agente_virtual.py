@@ -1,33 +1,41 @@
-# app/agentes/agente_virtual.py
+# ✅ agente_virtual.py atualizado com suporte a Tool estruturada
 
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from app.memoria.historico_redis import obter_historico_usuario
-import os
+from app.tools.especialidade_tool import responder_especialidade
+from langchain.agents import Tool, initialize_agent
 
-# 1. Modelo base OpenAI
-modelo_llm = ChatOpenAI(temperature=0.3)
+# ⚙️ Configuração do LLM
+llm = ChatOpenAI(model="gpt-4", temperature=0.3)
 
-# 2. Template de conversa com placeholders
+# 📌 Ferramentas disponíveis
+ferramentas = [
+    Tool(
+        name="responder_especialidade",
+        func=responder_especialidade,
+        description="Fornece informações detalhadas sobre especialidades da clínica. Requer 'clinica_id' e o nome da especialidade."
+    )
+]
+
+# 🧠 Prompt com histórico e input
 prompt = ChatPromptTemplate.from_messages([
-    ("system", """
-        Você é uma secretária humanizada de uma clínica odontológica. 
-        Seu papel é acolher o paciente, entender a necessidade dele 
-        e conduzir a conversa com leveza, cuidado e clareza.
-        Nunca se identifique como assistente virtual.
-    """),
+    ("system", "Você é uma secretária atenciosa e acolhedora de uma clínica odontológica."),
     MessagesPlaceholder(variable_name="history"),
-    ("human", "{mensagem}")
+    ("human", "{input}")
 ])
 
-# 3. Cadeia básica de resposta (LLM + Prompt)
-cadeia_resposta = prompt | modelo_llm
-
-# 4. Envoltório com memória Redis (mantém histórico por telefone)
+# 🤖 Agente com memória
 agente_com_memoria = RunnableWithMessageHistory(
-    cadeia_resposta,
+    initialize_agent(
+        tools=ferramentas,
+        llm=llm,
+        agent_type="chat-zero-shot-react-description",
+        verbose=True,
+        handle_parsing_errors=True
+    ),
     lambda session_id: obter_historico_usuario(session_id),
-    input_messages_key="mensagem",
+    input_messages_key="input",
     history_messages_key="history"
 )
