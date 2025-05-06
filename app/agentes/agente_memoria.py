@@ -1,4 +1,4 @@
-# 📁 app/agentes/agente_memoria.py
+# ✅ agente_memoria.py atualizado para tratar mensagens com '[clinica_id: ...]'
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -6,39 +6,41 @@ from langchain_openai import ChatOpenAI
 from langchain.agents import Tool, initialize_agent
 from app.memoria.historico_redis import obter_historico_usuario
 from app.tools.especialidade_tool import responder_especialidade
+import json
 
-# ⚙️ Inicializa o modelo da OpenAI com temperatura baixa para mais consistência nas respostas
+# ⚙️ Configuração do LLM
 llm = ChatOpenAI(model="gpt-4", temperature=0.3)
 
-# 🛠️ Lista de ferramentas disponíveis para o agente (por enquanto, apenas especialidades)
+# 🧰 Ferramentas disponíveis
 ferramentas = [
     Tool(
         name="responder_especialidade",
         func=responder_especialidade,
         description=(
-            "Usar quando a pessoa quiser saber se a clínica tem uma especialidade, o profissional que atende, "
-            "e os diferenciais. Funciona com frase livre, desde que contenha algo como [clinica_id: bemquerer]."
+            "Use esta ferramenta para responder perguntas sobre especialidades da clínica. "
+            "⚠️ Requer uma string com '[clinica_id: id]' e o conteúdo da dúvida OU um JSON com os campos:\n"
+            "{'clinica_id': 'bemquerer', 'especialidade': 'implante'}"
         ),
     )
 ]
 
-# 🧠 Template de prompt com histórico de conversa (mantém contexto entre mensagens)
+# 🧠 Prompt com histórico de conversa
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "Você é uma secretária humanizada de uma clínica odontológica, pronta para acolher e informar."),
+    ("system", "Você é uma secretária atenciosa e acolhedora de uma clínica odontológica."),
     MessagesPlaceholder(variable_name="history"),
     ("human", "{input}")
 ])
 
-# 🤖 Configuração do agente com memória de sessão via Redis
+# 🤖 Agente com memória de sessão
 agente_com_memoria = RunnableWithMessageHistory(
     initialize_agent(
         tools=ferramentas,
         llm=llm,
-        agent_type="chat-zero-shot-react-description",  # 🧠 Usa RAG zero-shot com descrição de tools
+        agent_type="chat-zero-shot-react-description",
         verbose=True,
-        handle_parsing_errors=True  # ⚠️ Evita falha total caso o modelo retorne erro de parsing
+        handle_parsing_errors=True
     ),
     lambda session_id: obter_historico_usuario(session_id),
-    input_messages_key="input",   # 🔑 Campo da mensagem de entrada
-    history_messages_key="history"  # 🔁 Campo do histórico da conversa
+    input_messages_key="input",
+    history_messages_key="history"
 )
