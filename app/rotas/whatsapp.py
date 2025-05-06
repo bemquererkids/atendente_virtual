@@ -52,35 +52,29 @@ def webhook_whatsapp():
     # 🔍 Detecta se a mensagem é um JSON estruturado
     try:
         input_data = json.loads(mensagem)
-        if isinstance(input_data, dict) and "clinica_id" in input_data and "especialidade" in input_data:
-            entrada_estruturada = True
-        else:
-            entrada_estruturada = False
+        entrada_estruturada = isinstance(input_data, dict) and "clinica_id" in input_data and "especialidade" in input_data
     except json.JSONDecodeError:
         entrada_estruturada = False
 
-    # 📦 Formata a mensagem com contexto de clínica
-    if entrada_estruturada:
-        mensagem_para_agente = json.dumps(input_data)
-    else:
-        mensagem_para_agente = f"[clinica_id: {clinic_id}]\n{mensagem}"
+    # 📦 Usa a mensagem limpa, sem incluir [clinica_id: x] dentro do texto
+    mensagem_para_agente = mensagem if not entrada_estruturada else json.dumps(input_data)
 
     try:
         resposta = agente_com_memoria.invoke(
-            {"input": mensagem_para_agente},
+            {
+                "input": mensagem_para_agente,
+                "clinica_id": clinic_id
+            },
             config={"configurable": {"session_id": telefone}}
         )
 
         print(f"[INFO] Resposta gerada: {resposta}")
 
-        # 🧠 Pega apenas o output da resposta do agente
         texto_final = resposta["output"] if isinstance(resposta, dict) and "output" in resposta else str(resposta)
 
-        # ✂️ Corta caso ultrapasse o limite de 1600 caracteres do Twilio
         if len(texto_final) > 1599:
             texto_final = texto_final[:1597] + "…"
 
-        # 📤 Envia mensagem via Twilio
         client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
         client.messages.create(
             body=texto_final,
