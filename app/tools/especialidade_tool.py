@@ -1,10 +1,11 @@
 import json
 import os
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel
+from ast import literal_eval
 from langchain.tools import tool
 
-# Caminho atualizado para o novo JSON estruturado por clínica
+# Caminho padrão do arquivo de especialidades
 CAMINHO_JSON = os.path.join("configs", "especialidades_por_clinica.json")
 
 class EntradaEspecialidade(BaseModel):
@@ -18,11 +19,9 @@ def carregar_dados_especialidade(clinica_id: str, especialidade: str) -> str:
     with open(CAMINHO_JSON, "r", encoding="utf-8") as f:
         dados = json.load(f)
 
-    dados_clinica = dados.get(clinica_id)
-    if not dados_clinica:
-        return f"⚠️ A clínica '{clinica_id}' não foi encontrada."
-
+    dados_clinica = dados.get(clinica_id, {})
     dados_especialidade = dados_clinica.get(especialidade.lower())
+
     if not dados_especialidade:
         return f"⚠️ A especialidade '{especialidade}' ainda não está cadastrada para a clínica '{clinica_id}'."
 
@@ -40,10 +39,18 @@ def carregar_dados_especialidade(clinica_id: str, especialidade: str) -> str:
     return texto.strip()
 
 @tool
-def responder_especialidade(clinica_id: str, especialidade: str) -> str:
-    """Responde com detalhes sobre uma especialidade oferecida por uma clínica específica."""
+def responder_especialidade(input_data: Union[str, dict]) -> str:
+    """Responde com detalhes sobre uma especialidade oferecida por uma clínica específica. Espera um JSON com 'clinica_id' e 'especialidade'."""
     try:
-        entrada = EntradaEspecialidade(clinica_id=clinica_id, especialidade=especialidade)
+        # Se for string, tenta converter para dict
+        if isinstance(input_data, str):
+            input_data = literal_eval(input_data)
+
+        entrada = EntradaEspecialidade(**input_data)
         return carregar_dados_especialidade(entrada.clinica_id, entrada.especialidade)
-    except Exception:
-        return "⚠️ Não consegui identificar essa especialidade. Você poderia reformular ou perguntar de outro jeito?"
+    except Exception as e:
+        return (
+            "⚠️ Não consegui identificar essa especialidade. "
+            "Tente perguntar de outra forma ou verifique os dados fornecidos. "
+            f"(Erro interno: {e})"
+        )

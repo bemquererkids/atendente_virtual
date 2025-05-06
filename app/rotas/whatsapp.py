@@ -47,26 +47,29 @@ def webhook_whatsapp():
     if not telefone or not mensagem or not numero_destino:
         return "Requisição inválida", 400
 
+    # 🏥 Identifica a clínica
     clinic_id = identificar_clinica_por_numero(numero_destino)
     carregar_identidade_clinica(clinic_id)
+
+    # 🧠 Opcional: extrai nome da mensagem
     nome_detectado = extrair_nome(mensagem)
 
-    mensagem_com_contexto = f"[clinica_id: {clinic_id}]\n{mensagem}"
+    # 🔗 Injeta o clinic_id no contexto da mensagem
+    mensagem_com_contexto = f'{{"clinica_id": "{clinic_id}", "mensagem": """{mensagem}"""}}'
 
+    # 🤖 Invoca o agente com memória
     resposta = agente_com_memoria.invoke(
         {"input": mensagem_com_contexto},
         config={"configurable": {"session_id": telefone}}
     )
 
-    print(f"[TESTE LOCAL] Resposta gerada: {resposta}")
-
-    # Trata a resposta caso venha como dict ou string
-    mensagem_final = resposta.get("output", str(resposta)) if isinstance(resposta, dict) else str(resposta)
+    resposta_texto = resposta.content if hasattr(resposta, "content") else str(resposta)
+    print(f"[LOG] Resposta gerada: {resposta_texto}")
 
     try:
         client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
         client.messages.create(
-            body=mensagem_final,
+            body=resposta_texto,
             from_=numero_destino,
             to=telefone
         )
