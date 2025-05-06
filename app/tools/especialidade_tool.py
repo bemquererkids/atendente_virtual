@@ -40,10 +40,10 @@ def carregar_dados_especialidade(clinica_id: str, especialidade: str) -> str:
     return texto.strip()
 
 @tool
-def responder_especialidade(input_data: dict) -> str:
+def responder_especialidade(clinica_id: str, especialidade: str) -> str:
     """Responde com detalhes sobre uma especialidade oferecida por uma clínica específica."""
     try:
-        entrada = EntradaEspecialidade(**input_data)
+        entrada = EntradaEspecialidade(clinica_id=clinica_id, especialidade=especialidade)
         return carregar_dados_especialidade(entrada.clinica_id, entrada.especialidade)
     except Exception:
         return "⚠️ Não consegui identificar essa especialidade. Você poderia reformular ou perguntar de outro jeito?"
