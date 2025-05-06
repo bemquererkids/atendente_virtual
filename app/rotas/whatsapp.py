@@ -1,8 +1,10 @@
+# ✅ whatsapp.py atualizado para usar agente_memoria
+
 from flask import Blueprint, request
 from app.utilitarios.extrair_nome import extrair_nome
 from app.config.identidade_clinica import carregar_identidade_clinica
 from app.utilitarios.configuracoes_clinica import carregar_configuracoes_clinica
-from app.agentes.agente_memoria import agente_com_memoria
+from app.agentes.agente_memoria import agente_com_memoria  # Novo nome correto
 from twilio.rest import Client
 import os
 import json
@@ -35,7 +37,7 @@ def identificar_clinica_por_numero(numero_destino):
                 if numero_config_limpo and numero_config_limpo in numero_destino_limpo:
                     return dados.get("clinica_id")
 
-    return "bemquerer"  # fallback padrão
+    return "bemquerer"  # fallback padrao
 
 @whatsapp.route("/webhook", methods=["POST"])
 def webhook_whatsapp():
@@ -49,16 +51,17 @@ def webhook_whatsapp():
     clinic_id = identificar_clinica_por_numero(numero_destino)
     carregar_identidade_clinica(clinic_id)
 
+    # 🔍 Detecta se a mensagem é um JSON estruturado
     try:
         input_data = json.loads(mensagem)
-        entrada_estruturada = (
-            isinstance(input_data, dict)
-            and "clinica_id" in input_data
-            and "especialidade" in input_data
-        )
+        if isinstance(input_data, dict) and "clinica_id" in input_data and "especialidade" in input_data:
+            entrada_estruturada = True
+        else:
+            entrada_estruturada = False
     except json.JSONDecodeError:
         entrada_estruturada = False
 
+    # 📦 Formata a mensagem com contexto de clínica
     if entrada_estruturada:
         mensagem_para_agente = json.dumps(input_data)
     else:
