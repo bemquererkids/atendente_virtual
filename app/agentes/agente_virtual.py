@@ -4,7 +4,7 @@ from flask import Blueprint, request
 from app.utilitarios.extrair_nome import extrair_nome
 from app.config.identidade_clinica import carregar_identidade_clinica
 from app.utilitarios.configuracoes_clinica import carregar_configuracoes_clinica
-from app.agentes.agente_virtual import agente_com_memoria
+from app.agentes import agente_virtual
 
 from twilio.rest import Client
 import os
