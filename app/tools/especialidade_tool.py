@@ -1,27 +1,22 @@
-# ✅ Importações padrão
 import json
 import os
 import re
 from typing import Optional, Union
 from ast import literal_eval
-
-# ✅ Validação de dados com Pydantic
 from pydantic import BaseModel
-
-# ✅ Decorador do LangChain para tornar a função uma Tool oficial
 from langchain.tools import tool
 
-# 📍 Caminho padrão para o JSON com todas as especialidades por clínica
+# 📁 Caminho padrão do JSON com especialidades por clínica
 CAMINHO_JSON = os.path.join("configs", "especialidades_por_clinica.json")
 
 
-# 📦 Modelo Pydantic para validar entradas bem formatadas
+# 📦 Modelo de entrada validado com Pydantic
 class EntradaEspecialidade(BaseModel):
     clinica_id: str
     especialidade: str
 
 
-# 🧠 Função auxiliar que extrai o clinica_id de um texto do tipo: "[clinica_id: bemquerer]"
+# 🔍 Extrai o clinica_id do texto (ex: "[clinica_id: bemquerer]")
 def extrair_clinica_id(texto: str) -> Optional[str]:
     padrao = r"\[clinica_id:\s*(\w+)\]"
     match = re.search(padrao, texto, re.IGNORECASE)
@@ -30,7 +25,7 @@ def extrair_clinica_id(texto: str) -> Optional[str]:
     return None
 
 
-# 🧾 Função que carrega os dados da especialidade com base no JSON da clínica
+# 📄 Carrega os dados da especialidade a partir do JSON
 def carregar_dados_especialidade(clinica_id: str, especialidade: str) -> str:
     if not os.path.exists(CAMINHO_JSON):
         return f"❌ O arquivo de especialidades não foi encontrado em {CAMINHO_JSON}."
@@ -60,7 +55,7 @@ def carregar_dados_especialidade(clinica_id: str, especialidade: str) -> str:
     return texto.strip()
 
 
-# 🔧 Tool oficial LangChain: pode ser chamada diretamente por agentes
+# 🛠️ Tool oficial LangChain: responde perguntas sobre especialidades
 @tool
 def responder_especialidade(input_data: Union[str, dict]) -> str:
     """
@@ -69,29 +64,29 @@ def responder_especialidade(input_data: Union[str, dict]) -> str:
     """
 
     try:
-        # 🔍 Caso a entrada seja uma string (texto livre ou JSON textual)
+        # 🧾 Se entrada for string
         if isinstance(input_data, str):
             input_data = input_data.strip()
 
-            # ✅ Tenta interpretar como JSON usando literal_eval
+            # ✅ Caso a string seja um dicionário (ex: '{"clinica_id": "...", "especialidade": "..."}')
             if input_data.startswith("{") and input_data.endswith("}"):
                 input_data = literal_eval(input_data)
 
-            # 🧠 Caso seja texto livre com [clinica_id: ...]
             else:
+                # 🧠 Tenta extrair clinica_id
                 clinica_id = extrair_clinica_id(input_data)
                 if not clinica_id:
-                    return "⚠️ Não consegui identificar a clínica. Por favor, inclua algo como [clinica_id: bemquerer]."
+                    return "⚠️ Não consegui identificar a clínica. Inclua algo como [clinica_id: bemquerer]."
 
+                # 🔍 Carrega dados da clínica
                 with open(CAMINHO_JSON, "r", encoding="utf-8") as f:
                     dados = json.load(f)
 
                 dados_clinica = dados.get(clinica_id, {})
                 texto_normalizado = input_data.lower()
 
+                # 🔎 Tenta encontrar a especialidade por palavras-chave
                 especialidade = None
-
-                # 🔍 Busca por palavras-chave nas especialidades disponíveis
                 for esp, detalhes in dados_clinica.items():
                     for termo in detalhes.get("palavras_chave", []):
                         if termo.lower() in texto_normalizado:
@@ -103,17 +98,13 @@ def responder_especialidade(input_data: Union[str, dict]) -> str:
                 if not especialidade:
                     return "🤔 Não consegui identificar a especialidade na sua mensagem. Poderia reformular?"
 
-                # Monta o dicionário final para ser validado e usado
                 input_data = {"clinica_id": clinica_id, "especialidade": especialidade}
 
-        # ✅ Validação do dicionário final com Pydantic
+        # ✅ Valida o dicionário final com Pydantic
         entrada = EntradaEspecialidade(**input_data)
-
-        # ✅ Gera resposta final com base na especialidade
         return carregar_dados_especialidade(entrada.clinica_id, entrada.especialidade)
 
     except Exception as e:
-        # 🛑 Mensagem amigável + log do erro técnico para debug
         return (
             "❌ Ocorreu um erro ao tentar responder sobre a especialidade. "
             f"(Detalhes técnicos: {e})"
