@@ -1,10 +1,16 @@
 import json
 import os
 import re
-from typing import Optional
+from typing import Optional, Union
+from ast import literal_eval
+from pydantic import BaseModel
 from langchain.tools import tool
 
 CAMINHO_JSON = os.path.join("configs", "especialidades_por_clinica.json")
+
+class EntradaEspecialidade(BaseModel):
+    clinica_id: str
+    especialidade: str
 
 def carregar_dados_especialidade(clinica_id: str, especialidade: str) -> str:
     if not os.path.exists(CAMINHO_JSON):
@@ -40,41 +46,46 @@ def extrair_clinica_id(texto: str) -> Optional[str]:
     return None
 
 @tool
-def responder_especialidade(input_data: str) -> str:
+def responder_especialidade(input_data: Union[str, dict]) -> str:
     """
     Responde com detalhes sobre uma especialidade oferecida por uma clínica.
-    A entrada pode ser um JSON ou um texto com '[clinica_id: ...] ...especialidade...'
+    Aceita input como string com '[clinica_id: ...]' ou dicionário JSON com 'clinica_id' e 'especialidade'.
     """
     try:
-        if input_data.strip().startswith("{"):
-            # Tenta carregar como JSON
-            input_dict = json.loads(input_data)
-            clinica_id = input_dict.get("clinica_id")
-            especialidade = input_dict.get("especialidade")
-        else:
-            clinica_id = extrair_clinica_id(input_data)
-            if not clinica_id:
-                return "⚠️ Não consegui identificar a clínica. Por favor, inclua algo como [clinica_id: bemquerer]."
+        if isinstance(input_data, str):
+            # Tenta converter string para dicionário se estiver em formato JSON-like
+            if input_data.strip().startswith("{"):
+                input_data = literal_eval(input_data)
+            else:
+                clinica_id = extrair_clinica_id(input_data)
+                if not clinica_id:
+                    return "⚠️ Não consegui identificar a clínica. Por favor, inclua algo como [clinica_id: bemquerer]."
 
-            with open(CAMINHO_JSON, "r", encoding="utf-8") as f:
-                dados = json.load(f)
+                with open(CAMINHO_JSON, "r", encoding="utf-8") as f:
+                    dados = json.load(f)
 
-            dados_clinica = dados.get(clinica_id, {})
-            texto_normalizado = input_data.lower()
+                dados_clinica = dados.get(clinica_id, {})
+                texto_normalizado = input_data.lower()
 
-            especialidade = None
-            for esp, detalhes in dados_clinica.items():
-                for termo in detalhes.get("palavras_chave", []):
-                    if termo.lower() in texto_normalizado:
-                        especialidade = esp
+                especialidade = None
+                for esp, detalhes in dados_clinica.items():
+                    for termo in detalhes.get("palavras_chave", []):
+                        if termo.lower() in texto_normalizado:
+                            especialidade = esp
+                            break
+                    if especialidade:
                         break
-                if especialidade:
-                    break
 
-        if not (clinica_id and especialidade):
-            return "🤔 Não consegui identificar a especialidade na sua mensagem. Poderia reformular?"
+                if not especialidade:
+                    return "🤔 Não consegui identificar a especialidade na sua mensagem. Poderia reformular?"
 
-        return carregar_dados_especialidade(clinica_id, especialidade)
+                input_data = {"clinica_id": clinica_id, "especialidade": especialidade}
+
+        entrada = EntradaEspecialidade(**input_data)
+        return carregar_dados_especialidade(entrada.clinica_id, entrada.especialidade)
 
     except Exception as e:
-        return f"❌ Ocorreu um erro ao tentar responder sobre a especialidade. (Detalhes: {e})"
+        return (
+            "❌ Ocorreu um erro ao tentar responder sobre a especialidade. "
+            f"(Detalhes: {e})"
+        )
