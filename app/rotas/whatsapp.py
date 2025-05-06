@@ -3,7 +3,6 @@ from app.utilitarios.extrair_nome import extrair_nome
 from app.config.identidade_clinica import carregar_identidade_clinica
 from app.utilitarios.configuracoes_clinica import carregar_configuracoes_clinica
 from app.agentes.agente_virtual import agente_com_memoria
-
 from twilio.rest import Client
 import os
 import json
@@ -49,29 +48,40 @@ def webhook_whatsapp():
 
     clinic_id = identificar_clinica_por_numero(numero_destino)
     carregar_identidade_clinica(clinic_id)
-    nome_detectado = extrair_nome(mensagem)
 
-    mensagem_com_contexto = f"[clinica_id: {clinic_id}]\n{mensagem}"
+    # 🔍 Detecta se a mensagem é um JSON estruturado
+    try:
+        input_data = json.loads(mensagem)
+        if isinstance(input_data, dict) and "clinica_id" in input_data and "especialidade" in input_data:
+            entrada_estruturada = True
+        else:
+            entrada_estruturada = False
+    except json.JSONDecodeError:
+        entrada_estruturada = False
+
+    # 📦 Formata a mensagem com contexto de clínica
+    if entrada_estruturada:
+        mensagem_para_agente = json.dumps(input_data)
+    else:
+        mensagem_para_agente = f"[clinica_id: {clinic_id}]\n{mensagem}"
 
     try:
         resposta = agente_com_memoria.invoke(
-            {
-                "input": mensagem_com_contexto,
-                "clinica_id": clinic_id
-            },
+            {"input": mensagem_para_agente},
             config={"configurable": {"session_id": telefone}}
         )
 
-        print(f"[LOG] Resposta gerada: {resposta.content if hasattr(resposta, 'content') else resposta}")
+        print(f"[INFO] Resposta gerada: {resposta}")
 
         client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
         client.messages.create(
-            body=resposta.content if hasattr(resposta, 'content') else resposta,
+            body=resposta if isinstance(resposta, str) else str(resposta),
             from_=numero_destino,
             to=telefone
         )
+
     except Exception as e:
         print(f"[ERRO] Falha no processamento ou envio: {e}")
-        return "Erro interno no processamento", 500
+        return "Erro interno", 500
 
     return "ok", 200
