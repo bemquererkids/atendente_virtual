@@ -1,17 +1,13 @@
-# ✅ whatsapp.py com controle de limite de caracteres (1600) e comentários explicativos
-
 from flask import Blueprint, request
 from app.utilitarios.extrair_nome import extrair_nome
 from app.config.identidade_clinica import carregar_identidade_clinica
 from app.utilitarios.configuracoes_clinica import carregar_configuracoes_clinica
-from app.agentes.agente_memoria import agente_com_memoria  # Certifique-se que este nome está correto
+from app.agentes.agente_memoria import agente_com_memoria
 from twilio.rest import Client
 import os
 import json
 
 whatsapp = Blueprint("whatsapp", __name__)
-
-# 🔍 Identifica a clínica a partir do número de destino
 
 def identificar_clinica_por_numero(numero_destino):
     numero_destino_limpo = (
@@ -41,8 +37,6 @@ def identificar_clinica_por_numero(numero_destino):
 
     return "bemquerer"  # fallback padrão
 
-# 🚀 Webhook principal que recebe mensagens
-
 @whatsapp.route("/webhook", methods=["POST"])
 def webhook_whatsapp():
     telefone = request.form.get("From")
@@ -55,18 +49,17 @@ def webhook_whatsapp():
     clinic_id = identificar_clinica_por_numero(numero_destino)
     carregar_identidade_clinica(clinic_id)
 
-    # ⚙️ Detecta se é um JSON estruturado
+    # 🔍 Detecta se a mensagem é um JSON estruturado
     try:
         input_data = json.loads(mensagem)
-        entrada_estruturada = (
-            isinstance(input_data, dict)
-            and "clinica_id" in input_data
-            and "especialidade" in input_data
-        )
+        if isinstance(input_data, dict) and "clinica_id" in input_data and "especialidade" in input_data:
+            entrada_estruturada = True
+        else:
+            entrada_estruturada = False
     except json.JSONDecodeError:
         entrada_estruturada = False
 
-    # 🎯 Prepara o prompt para o agente
+    # 📦 Formata a mensagem com contexto de clínica
     if entrada_estruturada:
         mensagem_para_agente = json.dumps(input_data)
     else:
@@ -80,17 +73,20 @@ def webhook_whatsapp():
 
         print(f"[INFO] Resposta gerada: {resposta}")
 
-        # 💬 Trata mensagens longas para não exceder 1600 caracteres (limite do Twilio)
-        mensagem_final = resposta if isinstance(resposta, str) else str(resposta)
-        partes = [mensagem_final[i:i+1500] for i in range(0, len(mensagem_final), 1500)]
+        # 🧠 Pega apenas o output da resposta do agente
+        texto_final = resposta["output"] if isinstance(resposta, dict) and "output" in resposta else str(resposta)
 
+        # ✂️ Corta caso ultrapasse o limite de 1600 caracteres do Twilio
+        if len(texto_final) > 1599:
+            texto_final = texto_final[:1597] + "…"
+
+        # 📤 Envia mensagem via Twilio
         client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
-        for parte in partes:
-            client.messages.create(
-                body=parte,
-                from_=numero_destino,
-                to=telefone
-            )
+        client.messages.create(
+            body=texto_final,
+            from_=numero_destino,
+            to=telefone
+        )
 
     except Exception as e:
         print(f"[ERRO] Falha no processamento ou envio: {e}")
