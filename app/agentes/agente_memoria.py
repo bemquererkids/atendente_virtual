@@ -1,4 +1,4 @@
-# ✅ agente_memoria.py atualizado para tratar mensagens com '[clinica_id: ...]'
+# ✅ agente_memoria.py — Agente com suporte a Tools e memória de sessão
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -6,32 +6,31 @@ from langchain_openai import ChatOpenAI
 from langchain.agents import Tool, initialize_agent
 from app.memoria.historico_redis import obter_historico_usuario
 from app.tools.especialidade_tool import responder_especialidade
-import json
 
-# ⚙️ Configuração do LLM
+# ⚙️ Configuração do modelo LLM
 llm = ChatOpenAI(model="gpt-4", temperature=0.3)
 
-# 🧰 Ferramentas disponíveis
+# 🧰 Lista de ferramentas (Tools) disponíveis para o agente
 ferramentas = [
     Tool(
         name="responder_especialidade",
         func=responder_especialidade,
         description=(
-            "Use esta ferramenta para responder perguntas sobre especialidades da clínica. "
-            "⚠️ Requer uma string com '[clinica_id: id]' e o conteúdo da dúvida OU um JSON com os campos:\n"
+            "Use esta ferramenta para responder perguntas sobre especialidades da clínica.\n"
+            "Aceita perguntas em texto livre (ex: 'Vocês fazem implante?') ou em formato JSON com campos:\n"
             "{'clinica_id': 'bemquerer', 'especialidade': 'implante'}"
         ),
     )
 ]
 
-# 🧠 Prompt com histórico de conversa
+# 🧠 Prompt base com histórico da conversa
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "Você é uma secretária atenciosa e acolhedora de uma clínica odontológica."),
+    ("system", "Você é uma secretária acolhedora e atenciosa de uma clínica odontológica."),
     MessagesPlaceholder(variable_name="history"),
     ("human", "{input}")
 ])
 
-# 🤖 Agente com memória de sessão
+# 🤖 Criação do agente com memória de sessão via Redis
 agente_com_memoria = RunnableWithMessageHistory(
     initialize_agent(
         tools=ferramentas,
